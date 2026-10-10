@@ -1,53 +1,108 @@
-
-name: Build Rawla Mandi APK
+name: Build & Publish Rawla Mandi Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - both
   push:
     branches:
       - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build:
+  build-apk:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'npm'
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - name: Setup Java JDK 21
+        uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm ci --prefer-offline || npm install
 
-      - name: Build website
-        run: npm run build
+      - name: Build web application
+        run: |
+          npm run build
 
-      - name: Sync Capacitor
-        run: npx cap sync android
+      - name: Sync Capacitor Android
+        run: |
+          npx cap sync android
 
-      - name: Build debug APK
+      - name: Set executable permissions for Gradle wrapper
         run: |
           chmod +x android/gradlew
-          cd android
-          ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Build Release APK (optional)
+        if: github.event.inputs.build_type == 'both' || startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon --stacktrace || echo "Unsigned release assemble completed or skipped"
+
+      - name: Prepare APK Artifacts
+        run: |
+          mkdir -p build-artifacts
+          if [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp android/app/build/outputs/apk/debug/app-debug.apk build-artifacts/Rawla-Mandi-debug.apk
+            echo "Copied debug APK"
+          fi
+          if [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk build-artifacts/Rawla-Mandi-release-unsigned.apk
+            echo "Copied unsigned release APK"
+          fi
+          ls -la build-artifacts/
+
+      - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Rawla-Mandi-debug-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Rawla-Mandi-Android-APK
+          path: build-artifacts/*.apk
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
+
+      - name: Publish APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Rawla Mandi App ${{ github.ref_name }}
+          files: build-artifacts/*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
