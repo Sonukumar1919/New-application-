@@ -1,0 +1,6 @@
+{
+  "name": "Rawla Mandi",
+  "description": "रावला मंडी का डिजिटल बाज़ार और Android ऐप - स्थानीय दुकानें खोजें, उत्पाद देखें, ऑनलाइन रजिस्टर करें।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* Android & Mobile Native Safe Area styling */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+body.capacitor-platform {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior-y: none;
+}
+
+body.capacitor-platform input,
+body.capacitor-platform textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Ensure bottom navigation bar clears Android gesture navigation handle */
+body.capacitor-platform .fixed.bottom-0 {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Ensure sticky top header clears Android status bar / notch */
+body.capacitor-platform .sticky.top-0 {
+  padding-top: env(safe-area-inset-top, 0px);
+}
